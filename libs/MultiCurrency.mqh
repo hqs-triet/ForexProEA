@@ -88,12 +88,12 @@ class CMultiCurrencyBase: public CObject
         // Close all positions
         virtual void CloseAllPositions()=NULL;
         
-        void Init(string symbol, ENUM_TIMEFRAMES tf)
+        void Init(string symbol, ENUM_TIMEFRAMES tf, const ulong magicNumber)
         {
             // ========================================
             // Init common
             
-            m_trader.SetExpertMagicNumber(MAGIC_NUMBER); // magic
+            m_trader.SetExpertMagicNumber(magicNumber); // magic
             m_trader.SetMarginMode();
             m_trader.SetTypeFillingBySymbol(m_symbolCurrency);
             // ========================================
@@ -134,40 +134,40 @@ class CMultiCurrencyBase: public CObject
 CMultiCurrencyBase *currencyObjects[28];
 string currentSymbol;
 
-bool InitMain()
+bool InitMain(ulong magicNumber)
 {
     //csiHandle = iCustom(NULL, 0, "Market\\CSI_V1_1", 
     //                    20, 1, true, true, true, true, true, true, true, true, false, 100);
     //csiAll.Init(PERIOD_D1);
     
-    if(INP_AUDCAD) currencyObjects[AUDCAD].Init(symbols[AUDCAD] + InpSuffix, PERIOD_CURRENT);
-    if(INP_AUDCHF) currencyObjects[AUDCHF].Init(symbols[AUDCHF] + InpSuffix, PERIOD_CURRENT);
-    if(INP_AUDJPY) currencyObjects[AUDJPY].Init(symbols[AUDJPY] + InpSuffix, PERIOD_CURRENT);
-    if(INP_AUDNZD) currencyObjects[AUDNZD].Init(symbols[AUDNZD] + InpSuffix, PERIOD_CURRENT);
-    if(INP_AUDUSD) currencyObjects[AUDUSD].Init(symbols[AUDUSD] + InpSuffix, PERIOD_CURRENT);
-    if(INP_CADCHF) currencyObjects[CADCHF].Init(symbols[CADCHF] + InpSuffix, PERIOD_CURRENT);
-    if(INP_CADJPY) currencyObjects[CADJPY].Init(symbols[CADJPY] + InpSuffix, PERIOD_CURRENT);
-    if(INP_CHFJPY) currencyObjects[CHFJPY].Init(symbols[CHFJPY] + InpSuffix, PERIOD_CURRENT);
-    if(INP_EURAUD) currencyObjects[EURAUD].Init(symbols[EURAUD] + InpSuffix, PERIOD_CURRENT);
-    if(INP_EURCAD) currencyObjects[EURCAD].Init(symbols[EURCAD] + InpSuffix, PERIOD_CURRENT);
-    if(INP_EURCHF) currencyObjects[EURCHF].Init(symbols[EURCHF] + InpSuffix, PERIOD_CURRENT);
-    if(INP_EURGBP) currencyObjects[EURGBP].Init(symbols[EURGBP] + InpSuffix, PERIOD_CURRENT);
-    if(INP_EURJPY) currencyObjects[EURJPY].Init(symbols[EURJPY] + InpSuffix, PERIOD_CURRENT);
-    if(INP_EURNZD) currencyObjects[EURNZD].Init(symbols[EURNZD] + InpSuffix, PERIOD_CURRENT);
-    if(INP_EURUSD) currencyObjects[EURUSD].Init(symbols[EURUSD] + InpSuffix, PERIOD_CURRENT);
-    if(INP_GBPAUD) currencyObjects[GBPAUD].Init(symbols[GBPAUD] + InpSuffix, PERIOD_CURRENT);
-    if(INP_GBPCAD) currencyObjects[GBPCAD].Init(symbols[GBPCAD] + InpSuffix, PERIOD_CURRENT);
-    if(INP_GBPCHF) currencyObjects[GBPCHF].Init(symbols[GBPCHF] + InpSuffix, PERIOD_CURRENT);
-    if(INP_GBPJPY) currencyObjects[GBPJPY].Init(symbols[GBPJPY] + InpSuffix, PERIOD_CURRENT);
-    if(INP_GBPNZD) currencyObjects[GBPNZD].Init(symbols[GBPNZD] + InpSuffix, PERIOD_CURRENT);
-    if(INP_GBPUSD) currencyObjects[GBPUSD].Init(symbols[GBPUSD] + InpSuffix, PERIOD_CURRENT);
-    if(INP_NZDCAD) currencyObjects[NZDCAD].Init(symbols[NZDCAD] + InpSuffix, PERIOD_CURRENT);
-    if(INP_NZDCHF) currencyObjects[NZDCHF].Init(symbols[NZDCHF] + InpSuffix, PERIOD_CURRENT);
-    if(INP_NZDJPY) currencyObjects[NZDJPY].Init(symbols[NZDJPY] + InpSuffix, PERIOD_CURRENT);
-    if(INP_NZDUSD) currencyObjects[NZDUSD].Init(symbols[NZDUSD] + InpSuffix, PERIOD_CURRENT);
-    if(INP_USDCAD) currencyObjects[USDCAD].Init(symbols[USDCAD] + InpSuffix, PERIOD_CURRENT);
-    if(INP_USDCHF) currencyObjects[USDCHF].Init(symbols[USDCHF] + InpSuffix, PERIOD_CURRENT);
-    if(INP_USDJPY) currencyObjects[USDJPY].Init(symbols[USDJPY] + InpSuffix, PERIOD_CURRENT);
+    if(INP_AUDCAD) currencyObjects[AUDCAD].Init(symbols[AUDCAD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_AUDCHF) currencyObjects[AUDCHF].Init(symbols[AUDCHF] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_AUDJPY) currencyObjects[AUDJPY].Init(symbols[AUDJPY] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_AUDNZD) currencyObjects[AUDNZD].Init(symbols[AUDNZD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_AUDUSD) currencyObjects[AUDUSD].Init(symbols[AUDUSD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_CADCHF) currencyObjects[CADCHF].Init(symbols[CADCHF] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_CADJPY) currencyObjects[CADJPY].Init(symbols[CADJPY] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_CHFJPY) currencyObjects[CHFJPY].Init(symbols[CHFJPY] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_EURAUD) currencyObjects[EURAUD].Init(symbols[EURAUD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_EURCAD) currencyObjects[EURCAD].Init(symbols[EURCAD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_EURCHF) currencyObjects[EURCHF].Init(symbols[EURCHF] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_EURGBP) currencyObjects[EURGBP].Init(symbols[EURGBP] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_EURJPY) currencyObjects[EURJPY].Init(symbols[EURJPY] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_EURNZD) currencyObjects[EURNZD].Init(symbols[EURNZD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_EURUSD) currencyObjects[EURUSD].Init(symbols[EURUSD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_GBPAUD) currencyObjects[GBPAUD].Init(symbols[GBPAUD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_GBPCAD) currencyObjects[GBPCAD].Init(symbols[GBPCAD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_GBPCHF) currencyObjects[GBPCHF].Init(symbols[GBPCHF] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_GBPJPY) currencyObjects[GBPJPY].Init(symbols[GBPJPY] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_GBPNZD) currencyObjects[GBPNZD].Init(symbols[GBPNZD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_GBPUSD) currencyObjects[GBPUSD].Init(symbols[GBPUSD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_NZDCAD) currencyObjects[NZDCAD].Init(symbols[NZDCAD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_NZDCHF) currencyObjects[NZDCHF].Init(symbols[NZDCHF] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_NZDJPY) currencyObjects[NZDJPY].Init(symbols[NZDJPY] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_NZDUSD) currencyObjects[NZDUSD].Init(symbols[NZDUSD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_USDCAD) currencyObjects[USDCAD].Init(symbols[USDCAD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_USDCHF) currencyObjects[USDCHF].Init(symbols[USDCHF] + InpSuffix, PERIOD_CURRENT, magicNumber);
+    if(INP_USDJPY) currencyObjects[USDJPY].Init(symbols[USDJPY] + InpSuffix, PERIOD_CURRENT, magicNumber);
         
     if(!INP_AUDCAD && 
         !INP_AUDCHF && 
@@ -201,34 +201,34 @@ bool InitMain()
     {
         currentSymbol = Symbol();
         
-        if(StringCompare(currentSymbol, symbols[AUDCAD] + InpSuffix) == 0) currencyObjects[AUDCAD].Init(symbols[AUDCAD] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[AUDCHF] + InpSuffix) == 0) currencyObjects[AUDCHF].Init(symbols[AUDCHF] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[AUDJPY] + InpSuffix) == 0) currencyObjects[AUDJPY].Init(symbols[AUDJPY] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[AUDNZD] + InpSuffix) == 0) currencyObjects[AUDNZD].Init(symbols[AUDNZD] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[AUDUSD] + InpSuffix) == 0) currencyObjects[AUDUSD].Init(symbols[AUDUSD] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[CADCHF] + InpSuffix) == 0) currencyObjects[CADCHF].Init(symbols[CADCHF] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[CADJPY] + InpSuffix) == 0) currencyObjects[CADJPY].Init(symbols[CADJPY] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[CHFJPY] + InpSuffix) == 0) currencyObjects[CHFJPY].Init(symbols[CHFJPY] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[EURAUD] + InpSuffix) == 0) currencyObjects[EURAUD].Init(symbols[EURAUD] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[EURCAD] + InpSuffix) == 0) currencyObjects[EURCAD].Init(symbols[EURCAD] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[EURCHF] + InpSuffix) == 0) currencyObjects[EURCHF].Init(symbols[EURCHF] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[EURGBP] + InpSuffix) == 0) currencyObjects[EURGBP].Init(symbols[EURGBP] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[EURJPY] + InpSuffix) == 0) currencyObjects[EURJPY].Init(symbols[EURJPY] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[EURNZD] + InpSuffix) == 0) currencyObjects[EURNZD].Init(symbols[EURNZD] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[EURUSD] + InpSuffix) == 0) currencyObjects[EURUSD].Init(symbols[EURUSD] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[GBPAUD] + InpSuffix) == 0) currencyObjects[GBPAUD].Init(symbols[GBPAUD] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[GBPCAD] + InpSuffix) == 0) currencyObjects[GBPCAD].Init(symbols[GBPCAD] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[GBPCHF] + InpSuffix) == 0) currencyObjects[GBPCHF].Init(symbols[GBPCHF] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[GBPJPY] + InpSuffix) == 0) currencyObjects[GBPJPY].Init(symbols[GBPJPY] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[GBPNZD] + InpSuffix) == 0) currencyObjects[GBPNZD].Init(symbols[GBPNZD] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[GBPUSD] + InpSuffix) == 0) currencyObjects[GBPUSD].Init(symbols[GBPUSD] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[NZDCAD] + InpSuffix) == 0) currencyObjects[NZDCAD].Init(symbols[NZDCAD] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[NZDCHF] + InpSuffix) == 0) currencyObjects[NZDCHF].Init(symbols[NZDCHF] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[NZDJPY] + InpSuffix) == 0) currencyObjects[NZDJPY].Init(symbols[NZDJPY] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[NZDUSD] + InpSuffix) == 0) currencyObjects[NZDUSD].Init(symbols[NZDUSD] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[USDCAD] + InpSuffix) == 0) currencyObjects[USDCAD].Init(symbols[USDCAD] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[USDCHF] + InpSuffix) == 0) currencyObjects[USDCHF].Init(symbols[USDCHF] + InpSuffix, PERIOD_CURRENT);
-        if(StringCompare(currentSymbol, symbols[USDJPY] + InpSuffix) == 0) currencyObjects[USDJPY].Init(symbols[USDJPY] + InpSuffix, PERIOD_CURRENT);
+        if(StringCompare(currentSymbol, symbols[AUDCAD] + InpSuffix) == 0) currencyObjects[AUDCAD].Init(symbols[AUDCAD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[AUDCHF] + InpSuffix) == 0) currencyObjects[AUDCHF].Init(symbols[AUDCHF] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[AUDJPY] + InpSuffix) == 0) currencyObjects[AUDJPY].Init(symbols[AUDJPY] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[AUDNZD] + InpSuffix) == 0) currencyObjects[AUDNZD].Init(symbols[AUDNZD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[AUDUSD] + InpSuffix) == 0) currencyObjects[AUDUSD].Init(symbols[AUDUSD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[CADCHF] + InpSuffix) == 0) currencyObjects[CADCHF].Init(symbols[CADCHF] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[CADJPY] + InpSuffix) == 0) currencyObjects[CADJPY].Init(symbols[CADJPY] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[CHFJPY] + InpSuffix) == 0) currencyObjects[CHFJPY].Init(symbols[CHFJPY] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[EURAUD] + InpSuffix) == 0) currencyObjects[EURAUD].Init(symbols[EURAUD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[EURCAD] + InpSuffix) == 0) currencyObjects[EURCAD].Init(symbols[EURCAD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[EURCHF] + InpSuffix) == 0) currencyObjects[EURCHF].Init(symbols[EURCHF] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[EURGBP] + InpSuffix) == 0) currencyObjects[EURGBP].Init(symbols[EURGBP] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[EURJPY] + InpSuffix) == 0) currencyObjects[EURJPY].Init(symbols[EURJPY] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[EURNZD] + InpSuffix) == 0) currencyObjects[EURNZD].Init(symbols[EURNZD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[EURUSD] + InpSuffix) == 0) currencyObjects[EURUSD].Init(symbols[EURUSD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[GBPAUD] + InpSuffix) == 0) currencyObjects[GBPAUD].Init(symbols[GBPAUD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[GBPCAD] + InpSuffix) == 0) currencyObjects[GBPCAD].Init(symbols[GBPCAD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[GBPCHF] + InpSuffix) == 0) currencyObjects[GBPCHF].Init(symbols[GBPCHF] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[GBPJPY] + InpSuffix) == 0) currencyObjects[GBPJPY].Init(symbols[GBPJPY] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[GBPNZD] + InpSuffix) == 0) currencyObjects[GBPNZD].Init(symbols[GBPNZD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[GBPUSD] + InpSuffix) == 0) currencyObjects[GBPUSD].Init(symbols[GBPUSD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[NZDCAD] + InpSuffix) == 0) currencyObjects[NZDCAD].Init(symbols[NZDCAD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[NZDCHF] + InpSuffix) == 0) currencyObjects[NZDCHF].Init(symbols[NZDCHF] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[NZDJPY] + InpSuffix) == 0) currencyObjects[NZDJPY].Init(symbols[NZDJPY] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[NZDUSD] + InpSuffix) == 0) currencyObjects[NZDUSD].Init(symbols[NZDUSD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[USDCAD] + InpSuffix) == 0) currencyObjects[USDCAD].Init(symbols[USDCAD] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[USDCHF] + InpSuffix) == 0) currencyObjects[USDCHF].Init(symbols[USDCHF] + InpSuffix, PERIOD_CURRENT, magicNumber);
+        if(StringCompare(currentSymbol, symbols[USDJPY] + InpSuffix) == 0) currencyObjects[USDJPY].Init(symbols[USDJPY] + InpSuffix, PERIOD_CURRENT, magicNumber);
         
     }   
     return true;
