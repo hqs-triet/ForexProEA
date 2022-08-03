@@ -7,6 +7,9 @@
 #property link      "https://www.facebook.com/groups/forexproea/"
 #property version   "1.00"
 
+// Khai báo thư viện ve biểu tượng trên biểu đồ
+#include <ChartObjects\ChartObjectsArrows.mqh>
+
 #include "..\\libs\\Common.mqh"
 // Khai báo sử dụng chỉ báo chung với biểu đồ chính
 #property indicator_chart_window
@@ -115,11 +118,14 @@
 input group "=== Thông số các đường trung bình MA ==="
 input string InpMAPeriods = "4;8;12;16;20;24;28;32";    // Các đường MA cách nhau dấu ";" (tối đa 20)
 input ENUM_MA_METHOD InpMAMethod = MODE_SMA;            // Phương thức hiển thị MA
-
-
+input int InpPreventDuplicateSignalPeriod = 10;         // Khoảng cách tránh hiển thị nhiều tín hiệu liên tục
 input group "=== Thiết lập hiển thị ==="
 input int InpMAShift = 0;           // Hiển thị dịch chuyển (shift)
 input bool InpChangeColorOfCandle = false;  // Thay đổi màu của nến theo màu nền
+
+input bool InpDrawSymbol = false;           // Vẽ biểu tượng BUY/SELL khi SMA quạt ra
+input bool InpShowAlert = false;            // Hiển thị thông báo (alert)
+input bool InpSendNotification = false;     // Gởi thông báo tới thiết bị (notification)
 
 //--------------------------------------------------------------
 
@@ -135,7 +141,7 @@ input bool InpChangeColorOfCandle = false;  // Thay đổi màu của nến theo
 struct dataBuff {
     double data[];
 };
-dataBuff m_dataBuffer[];
+dataBuff m_dataBuffer[20];
 
 // Lưu trữ danh sách các giai đoạn của các đường MA
 int m_validMA[];
@@ -144,6 +150,7 @@ int m_validMA[];
 double m_signalBuffer[],
        m_signalBufferColor[];   // Bộ đệm này được dùng để hiển thị màu của chỉ báo tín hiệu
 
+int m_symbolId;
 //+------------------------------------------------------------------+
 //| Sự kiện khởi tạo
 //+------------------------------------------------------------------+
@@ -152,8 +159,7 @@ int OnInit()
     
     if(!ValidateMAs())
         return INIT_FAILED;
-    
-    
+
     // Thiết lập hiển thị chính xác số thập phân
     IndicatorSetInteger(INDICATOR_DIGITS, _Digits + 1);
     
@@ -176,21 +182,24 @@ int OnInit()
             short_name="unknown ma";
     }
     
-    // Thiết lập các đường MA được chỉ định từ người dùng 
-    for(int idx = 0; idx < ArraySize(m_validMA); idx++)
+    // Thiết lập các đường MA được chỉ định từ người dùng
+    for(int idx = 0; idx < ArraySize(m_dataBuffer); idx++)
     {
         // Thiết lập mapping bộ đệm của biến lưu trữ với bộ đệm hiển thị lên biểu đồ
         SetIndexBuffer(idx, m_dataBuffer[idx].data, INDICATOR_DATA);
+        
+        // Tên của đường hiển thị
+        string plotName = "None";
+        if(idx < ArraySize(m_validMA))
+            plotName = short_name + (string)(idx+1) + "(" + (string)m_validMA[idx] + ")";
+
+        PlotIndexSetString(idx, PLOT_LABEL, plotName);
         
         // Di chuyển MA theo khoảng nến nhất định (shift)
         PlotIndexSetInteger(idx, PLOT_SHIFT, InpMAShift);
         
         // Với những vị trí không có giá trị, thiết lập giá trị 0.0
         PlotIndexSetDouble(idx, PLOT_EMPTY_VALUE, 0.0);
-        
-        // Tên của đường hiển thị
-        string plotName = short_name + (string)(idx+1) + "(" + (string)m_validMA[idx] + ")";
-        PlotIndexSetString(idx, PLOT_LABEL, plotName);
     }
     
     // Thiết lập bộ đệm cho chỉ báo tín hiệu và màu hiển thị
@@ -219,6 +228,9 @@ int OnInit()
         ChartSetInteger(0, CHART_COLOR_CHART_LINE, bgColor);
     }
     
+    // Khởi tạo id cho việc vẽ biểu tượng BUY/SELL
+    m_symbolId = 0;
+    
     return(INIT_SUCCEEDED);
 }
 
@@ -241,7 +253,7 @@ bool ValidateMAs()
             countValidMA++;
     }
     ArrayResize(m_validMA, countValidMA);
-    ArrayResize(m_dataBuffer, countValidMA);
+    //ArrayResize(m_dataBuffer, countValidMA);
     countValidMA = 0;
     for(int idx = 0; idx < ArraySize(arrMA); idx++)
     {
@@ -270,8 +282,23 @@ int OnCalculate(const int rates_total,
                 const int begin,            // Đây là vị trí bắt đầu trong mảng price[] có dữ liệu đúng
                 const double &price[])      // Đây là bộ đệm giá được truyền vào từ bảng thiết lập
 {
+
+    // Khi chuyển khung giờ, bộ đệm không được xóa
+    // Cho nên cần phải xóa bộ đệm trước
+    if(prev_calculated == 0)
+    {
+        Print("Clearing old buffers (begin " + (string)begin + ")...");
+        for(int idxMA = 0; idxMA < ArraySize(m_dataBuffer) && !IsStopped(); idxMA++)
+        {
+            for(int idxBuffer = begin; idxBuffer < rates_total - 1 && !IsStopped(); idxBuffer++)
+            {
+                m_dataBuffer[idxMA].data[idxBuffer] = 0.0;
+            }
+        }
+    }
+    
     // Tính toán trung bình cộng tương ứng với từng MA
-    for(int idx = 0; idx < ArraySize(m_validMA); idx++)
+    for(int idx = 0; idx < ArraySize(m_validMA) && !IsStopped(); idx++)
     {
         switch(InpMAMethod)
         {
@@ -289,43 +316,79 @@ int OnCalculate(const int rates_total,
                 break;
         }
         
-    }    
-    // ----------------------------------------------------
-    // Tính toán các giá trị cho chỉ báo tín hiệu BUY/SELL
+    }
+    
+    // -----------------------------------------------------------------------------
+    // Tính toán các giá trị cho chỉ báo tín hiệu BUY/SELL khi lần đầu tiên khởi tạo
     if(prev_calculated == 0)
     {
-        for(int idx = 1; idx < rates_total - 1; idx++)
+        for(int idx = begin; idx < rates_total - 1 && !IsStopped(); idx++)
         {
-            if(IsFanDown(idx) || IsFanUp(idx))
+            m_signalBuffer[idx] = 0;
+            if(IsFanDown(idx) && !ExistPreviousSignal(idx - 1, InpPreventDuplicateSignalPeriod))
             {
                 m_signalBuffer[idx] = price[idx];
-            }
-            else
-                m_signalBuffer[idx] = 0;
-            
-            if(IsFanDown(idx))
                 m_signalBufferColor[idx] = 1;
-            if(IsFanUp(idx))
+            }
+            
+            if(IsFanUp(idx) && !ExistPreviousSignal(idx - 1, InpPreventDuplicateSignalPeriod))
+            {
+                m_signalBuffer[idx] = price[idx];
                 m_signalBufferColor[idx] = 0;
+            }
         }
     }
+    // ----------------------------------------------------------------------------
+    // Từ lần thứ 2 trở đi
     else
     {
         m_signalBuffer[rates_total - 1] = 0;
         for(int idx = prev_calculated - 1; idx < rates_total - 1 && !IsStopped(); idx++)
         {
-            if(IsFanDown(idx) || IsFanUp(idx))
+            m_signalBuffer[idx] = 0;
+            if(IsFanDown(idx) && !ExistPreviousSignal(idx - 1, InpPreventDuplicateSignalPeriod))
+            {
                 m_signalBuffer[idx] = price[idx];
-            else
-                m_signalBuffer[idx] = 0;
+                m_signalBufferColor[idx] = 1;
+            }
             
-            if(IsFanDown(idx))
-                m_signalBuffer[idx] = 1;
-            if(IsFanUp(idx))
+            if(IsFanUp(idx) && !ExistPreviousSignal(idx - 1, InpPreventDuplicateSignalPeriod))
+            {
+                m_signalBuffer[idx] = price[idx];
                 m_signalBufferColor[idx] = 0;
+            }
         }
     }
     
+    // Qua nến mới
+    if(rates_total - prev_calculated > 0)
+    {
+        string msg = "";
+        int idx = rates_total - 2;
+        if(IsFanUp(idx))
+        {
+            if(InpDrawSymbol)
+                DrawSymbolBuy(price[idx]);
+
+            msg = "[" + _Symbol + "-" + EnumToString(Period()) + "]: các đường MA đang quạt lên!";
+            if(InpShowAlert)
+                Alert(msg);
+            if(InpSendNotification)
+                SendNotification(msg);
+        }
+        if(IsFanDown(idx))
+        {
+            if(InpDrawSymbol)
+                DrawSymbolSell(price[idx]);
+                
+            msg = "[" + _Symbol + "-" + EnumToString(Period()) + "]: các đường MA đang quạt xuống!";
+            if(InpShowAlert)
+                Alert(msg);
+            if(InpSendNotification)
+                SendNotification(msg);
+        }
+        
+    }
     return rates_total;
 }
 
@@ -534,3 +597,54 @@ bool IsFanDown(int idx)
     return isPrevOK;
 }
 
+
+//+------------------------------------------------------------------+
+// Vẽ biểu tượng SELL
+//+------------------------------------------------------------------+
+void DrawSymbolSell(double price)
+{
+    CChartObjectArrow *sym = new CChartObjectArrow();
+    
+    datetime date1 = TimeCurrent();
+    // 217: up
+    // 218: down
+    // 82: sunshine
+    // 181: star
+    ++m_symbolId;
+    char symCode = (char)218;
+    sym.Create(0, "sym_" + IntegerToString(m_symbolId), 0, date1, price, symCode);
+    sym.Color(clrWhite);
+    sym.Selectable(true);
+    sym.Anchor(ANCHOR_BOTTOM);
+}
+void DrawSymbolBuy(double price)
+{
+    CChartObjectArrow *sym = new CChartObjectArrow();
+    
+    datetime date1 = TimeCurrent();
+    // 217: up
+    // 218: down
+    // 82: sunshine
+    // 181: star
+    ++m_symbolId;
+    char symCode = (char)217;
+    sym.Create(0, "sym_" + IntegerToString(m_symbolId), 0, date1, price, symCode);
+    sym.Color(clrWhite);
+    sym.Selectable(true);
+    sym.Anchor(ANCHOR_TOP);
+}
+
+bool ExistPreviousSignal(int fromIdx, int withinPeriods)
+{
+    if(fromIdx < 0)
+        return false;
+    if(fromIdx > ArraySize(m_signalBuffer))
+        return false;
+
+    for(int i = fromIdx; i > fromIdx - withinPeriods && i > 0;  i--)
+    {
+        if(m_signalBuffer[i] > 0)
+            return true;
+    }
+    return false;
+}
