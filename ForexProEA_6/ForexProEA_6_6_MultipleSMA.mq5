@@ -6,6 +6,7 @@
 #property copyright "Forex Pro EA"
 #property link      "https://www.facebook.com/groups/forexproea/"
 #property version   "1.00"
+#property description "MA Fan"
 
 // Khai báo thư viện ve biểu tượng trên biểu đồ
 #include <ChartObjects\ChartObjectsArrows.mqh>
@@ -16,7 +17,7 @@
 // Số lượng tối đa: 22 buffer (bao gồm tối đa 20 đường MA và 1 đường tín hiệu)
 #property indicator_buffers 22
 // Số lượng đường MA hiển thị tối đa là 21
-#property indicator_plots 21
+#property indicator_plots 22
 
 //-------------------------------------------------------------- 
 // Thông tin thiết lập cho đường trung bình MA 1,2,3,...,20
@@ -101,16 +102,18 @@
 #property indicator_type20  DRAW_LINE
 #property indicator_style20  STYLE_SOLID
 
-
-//--------------------------------------------------------------
-// Chỉ báo tín hiệu BUY/SELL, khi có tín hiệu
-#property indicator_label21  "Fan signal"
-// Chỉ định vẽ đường thẳng có màu
-#property indicator_type21   DRAW_COLOR_ARROW
-// Màu được định nghĩa theo một danh sách, đánh số từ 0, 1
-#property indicator_color21  clrBlue, clrRed
+// -----------------------------------------------
+// Chỉ báo tín hiệu BUY/SELL
+#property indicator_label21  "Fan up"
+#property indicator_type21   DRAW_ARROW
+#property indicator_color21  clrBlue
 #property indicator_width21  5
-//--------------------------------------------------------------
+
+#property indicator_label22  "Fan down"
+#property indicator_type22   DRAW_ARROW
+#property indicator_color22  clrRed
+#property indicator_width22  5
+
 
 //--------------------------------------------------------------
 // Tham số đầu vào (input)
@@ -147,8 +150,7 @@ dataBuff m_dataBuffer[20];
 int m_validMA[];
 
 // Bộ đệm của đường tín hiệu khi các đường MA quạt lên/xuống, dùng cho tín hiệu BUY/SELL
-double m_signalBuffer[],
-       m_signalBufferColor[];   // Bộ đệm này được dùng để hiển thị màu của chỉ báo tín hiệu
+double m_signalBuyBuffer[], m_signalSellBuffer[];
 
 int m_symbolId;
 //+------------------------------------------------------------------+
@@ -202,19 +204,22 @@ int OnInit()
         PlotIndexSetDouble(idx, PLOT_EMPTY_VALUE, 0.0);
     }
     
-    // Thiết lập bộ đệm cho chỉ báo tín hiệu và màu hiển thị
-    SetIndexBuffer(20, m_signalBuffer, INDICATOR_DATA);
-    SetIndexBuffer(21, m_signalBufferColor, INDICATOR_COLOR_INDEX);
+    // Thiết lập bộ đệm cho chỉ báo tín hiệu
+    SetIndexBuffer(20, m_signalBuyBuffer, INDICATOR_DATA);
+    SetIndexBuffer(21, m_signalSellBuffer, INDICATOR_DATA);
     
     // Di chuyển đường tín hiệu theo khoảng nến nhất định (shift)
     PlotIndexSetInteger(20, PLOT_SHIFT, InpMAShift);
+    PlotIndexSetInteger(21, PLOT_SHIFT, InpMAShift);
     
     // Với những vị trí không có giá trị, thiết lập giá trị 0.0
     PlotIndexSetDouble(20, PLOT_EMPTY_VALUE, 0.0);
+    PlotIndexSetDouble(21, PLOT_EMPTY_VALUE, 0.0);
     
     // Thiết lập kiểu vẽ của đường chỉ báo tín hiệu BUY/SELL
     // Giá trị code 159 theo font Wingdings là kiểu vẽ vòng tròn
     PlotIndexSetInteger(20, PLOT_ARROW, 159);
+    PlotIndexSetInteger(21, PLOT_ARROW, 159);
     
     // Thiết lập màu của nến theo màu nền của biểu đồ
     // Lúc này, người dùng sẽ tập trung vào các đường MA mà không quan tâm tới nến
@@ -324,39 +329,30 @@ int OnCalculate(const int rates_total,
     {
         for(int idx = begin; idx < rates_total - 1 && !IsStopped(); idx++)
         {
-            m_signalBuffer[idx] = 0;
-            if(IsFanDown(idx) && !ExistPreviousSignal(idx - 1, InpPreventDuplicateSignalPeriod))
-            {
-                m_signalBuffer[idx] = price[idx];
-                m_signalBufferColor[idx] = 1;
-            }
+            m_signalBuyBuffer[idx] = 0.0;
+            m_signalSellBuffer[idx] = 0.0;
+            if(IsFanDown(idx) && !ExistPreviousSignal(idx - 1, InpPreventDuplicateSignalPeriod, true))
+                m_signalSellBuffer[idx] = price[idx];
             
-            if(IsFanUp(idx) && !ExistPreviousSignal(idx - 1, InpPreventDuplicateSignalPeriod))
-            {
-                m_signalBuffer[idx] = price[idx];
-                m_signalBufferColor[idx] = 0;
-            }
+            if(IsFanUp(idx) && !ExistPreviousSignal(idx - 1, InpPreventDuplicateSignalPeriod, false))
+                m_signalBuyBuffer[idx] = price[idx];
         }
     }
     // ----------------------------------------------------------------------------
     // Từ lần thứ 2 trở đi
     else
     {
-        m_signalBuffer[rates_total - 1] = 0;
+        m_signalBuyBuffer[rates_total - 1] = 0;
+        m_signalSellBuffer[rates_total - 1] = 0;
         for(int idx = prev_calculated - 1; idx < rates_total - 1 && !IsStopped(); idx++)
         {
-            m_signalBuffer[idx] = 0;
-            if(IsFanDown(idx) && !ExistPreviousSignal(idx - 1, InpPreventDuplicateSignalPeriod))
-            {
-                m_signalBuffer[idx] = price[idx];
-                m_signalBufferColor[idx] = 1;
-            }
+            m_signalBuyBuffer[idx] = 0.0;
+            m_signalSellBuffer[idx] = 0.0;
+            if(IsFanDown(idx) && !ExistPreviousSignal(idx - 1, InpPreventDuplicateSignalPeriod, true))
+                m_signalSellBuffer[idx] = price[idx];
             
-            if(IsFanUp(idx) && !ExistPreviousSignal(idx - 1, InpPreventDuplicateSignalPeriod))
-            {
-                m_signalBuffer[idx] = price[idx];
-                m_signalBufferColor[idx] = 0;
-            }
+            if(IsFanUp(idx) && !ExistPreviousSignal(idx - 1, InpPreventDuplicateSignalPeriod, false))
+                m_signalBuyBuffer[idx] = price[idx];
         }
     }
     
@@ -365,7 +361,7 @@ int OnCalculate(const int rates_total,
     {
         string msg = "";
         int idx = rates_total - 2;
-        if(IsFanUp(idx))
+        if(IsFanUp(idx) && !ExistPreviousSignal(idx - 1, InpPreventDuplicateSignalPeriod, false))
         {
             if(InpDrawSymbol)
                 DrawSymbolBuy(price[idx]);
@@ -376,7 +372,7 @@ int OnCalculate(const int rates_total,
             if(InpSendNotification)
                 SendNotification(msg);
         }
-        if(IsFanDown(idx))
+        if(IsFanDown(idx) && !ExistPreviousSignal(idx - 1, InpPreventDuplicateSignalPeriod, true))
         {
             if(InpDrawSymbol)
                 DrawSymbolSell(price[idx]);
@@ -634,16 +630,21 @@ void DrawSymbolBuy(double price)
     sym.Anchor(ANCHOR_TOP);
 }
 
-bool ExistPreviousSignal(int fromIdx, int withinPeriods)
+bool ExistPreviousSignal(int fromIdx, int withinPeriods, bool isSell)
 {
     if(fromIdx < 0)
         return false;
-    if(fromIdx > ArraySize(m_signalBuffer))
-        return false;
 
+    if(isSell && fromIdx > ArraySize(m_signalSellBuffer))
+        return false;
+    if(!isSell && fromIdx > ArraySize(m_signalBuyBuffer))
+        return false;
+        
     for(int i = fromIdx; i > fromIdx - withinPeriods && i > 0;  i--)
     {
-        if(m_signalBuffer[i] > 0)
+        if(isSell && m_signalSellBuffer[i] > 0)
+            return true;
+        if(!isSell && m_signalBuyBuffer[i] > 0)
             return true;
     }
     return false;
