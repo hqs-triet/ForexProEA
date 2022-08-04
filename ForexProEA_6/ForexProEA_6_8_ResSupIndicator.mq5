@@ -14,7 +14,7 @@
 // Khai báo sử dụng chỉ báo chung với biểu đồ chính
 #property indicator_chart_window
 #property indicator_buffers 4
-#property indicator_plots 2
+#property indicator_plots 0
 
 // -----------------------------------------------
 // Chỉ báo tín hiệu 
@@ -32,8 +32,12 @@
 //--------------------------------------------------------------
 // Tham số đầu vào (input)
 //--------------------------------------------------------------
-input int InpZone = 150;
-input int InpLookbackPoint = 10;
+input int InpZone = 300;                    // Zone (in points)
+input int InpLookbackPoint = 10;            // Look back top/bottom points
+input color InpResColor = clrDarkGoldenrod; // Color of resistance zone
+input color InpSupColor = clrDarkSeaGreen;  // Color of support zone
+input color InpTurningColor = clrPurple;    // Color of turning res <-> sup
+input color InpSingleColor = clrDarkSlateGray;       // Color of single top/bottom point
 //--------------------------------------------------------------
 //const int MAX_POINT = 10;
 
@@ -41,8 +45,8 @@ double m_resBuffer[], m_supBuffer[],
        m_zigzagTopBuffer[], m_zigzagBottomBuffer[];
 int m_zigzagHandler;
 
-CChartObjectTrend *m_lineTop[], *m_lineBottom[];
-CChartObjectRectangle *m_recTop[], *m_recBottom[];
+CChartObjectTrend *m_lineTop[], *m_lineBottom[], *m_line[];
+CChartObjectRectangle *m_recTop[], *m_recBottom[], *m_rec[];
 //+------------------------------------------------------------------+
 //| Sự kiện khởi tạo
 //+------------------------------------------------------------------+
@@ -59,8 +63,8 @@ int OnInit()
     // Thiết lập bộ đệm cho chỉ báo tín hiệu
     SetIndexBuffer(2, m_resBuffer, INDICATOR_CALCULATIONS);
     SetIndexBuffer(3, m_supBuffer, INDICATOR_CALCULATIONS);
-    SetIndexBuffer(0, m_zigzagTopBuffer, INDICATOR_DATA);
-    SetIndexBuffer(1, m_zigzagBottomBuffer, INDICATOR_DATA);
+    SetIndexBuffer(0, m_zigzagTopBuffer, INDICATOR_CALCULATIONS);
+    SetIndexBuffer(1, m_zigzagBottomBuffer, INDICATOR_CALCULATIONS);
     
     // Với những vị trí không có giá trị, thiết lập giá trị 0.0
     PlotIndexSetDouble(0, PLOT_EMPTY_VALUE, 0.0);
@@ -86,16 +90,15 @@ int OnInit()
     ArrayResize(m_recBottom, InpLookbackPoint);
     ArrayResize(m_recTop, InpLookbackPoint);
     
-    for(int idx = 0; idx < InpLookbackPoint; idx++)
+    ArrayResize(m_line, InpLookbackPoint * 2);
+    ArrayResize(m_rec, InpLookbackPoint * 2);
+    
+    for(int idx = 0; idx < InpLookbackPoint * 2; idx++)
     {
-        if(m_lineTop[idx] != NULL) m_lineTop[idx].Delete();
-        if(m_lineBottom[idx] != NULL) m_lineBottom[idx].Delete();
-        if(m_recTop[idx] != NULL) m_recTop[idx].Delete();
-        if(m_recBottom[idx] != NULL) m_recBottom[idx].Delete();
-        m_lineTop[idx] =  NULL;
-        m_lineBottom[idx] =  NULL;
-        m_recTop[idx] =  NULL;
-        m_recBottom[idx] = NULL;
+        if(m_line[idx] != NULL) m_line[idx].Delete();
+        if(m_rec[idx] != NULL) m_rec[idx].Delete();
+        m_line[idx] = NULL;
+        m_rec[idx] = NULL;
         
         if(ObjectFind(0, "line_" + idx) >= 0)
             ObjectDelete(0, "line_" + idx);
@@ -160,113 +163,251 @@ int OnCalculate(const int rates_total,
         return(0);
     }
     
-    //Print("top=" + idxFirstTop + "; bottom=" + idxFirstBottom);
-    //Print("time=" + time[rates_total - idxFirstTop - 1]);
-    //DrawLine(m_lineTop1, 1, time[rates_total - idxFirstTop - 1], m_zigzagTopBuffer[idxFirstTop],
-    //                        time[rates_total - 1], m_zigzagTopBuffer[idxFirstTop]);
-    
     int idxTops[], idxBottoms[];
     ArrayResize(idxTops, InpLookbackPoint);
     ArrayResize(idxBottoms, InpLookbackPoint);
     
+    CArrayList<int> points;
     int idxFindTop = 4;
     int idxFindBottom = 4;
     for(int idx = 0; idx < InpLookbackPoint; idx++)
     {
         idxFindTop = GetFirstPoint(m_zigzagTopBuffer, idxFindTop + 1);
         idxFindBottom = GetFirstPoint(m_zigzagBottomBuffer, idxFindBottom + 1);
-        idxTops[idx] = idxFindTop;
-        idxBottoms[idx] = idxFindBottom;
-        
-        //DrawRec(m_recTop[idx-1], idx, 
-        //        time[rates_total - idxFindTop - 1], m_zigzagTopBuffer[idxFindTop],
-        //        time[rates_total - 1], m_zigzagTopBuffer[idxFindTop] - PointsToPriceShift(_Symbol, 150));
+        points.Add(idxFindTop);
+        points.Add(idxFindBottom);
     }
-    CArrayList<int> lstExcludeTop;
-    CArrayList<int> lstExcludeBottom;
-    int bufferPoints = InpZone;
-    for(int idx = InpLookbackPoint - 1; idx >= 0; idx--)
+    points.Sort();
+    CArrayList<int> excludePoints;
+    double zone = PointsToPriceShift(_Symbol, InpZone);
+    
+    datetime time1 = NULL;
+    
+    for(int idx = points.Count() - 1; idx > 0; idx--)
     {
-        bool hasDrawRecTop = false, hasDrawRecBottom = false;
-        datetime time1Top = time[rates_total - idxTops[idx] - 1];
-        datetime time1Bottom = time[rates_total - idxBottoms[idx] - 1];
+        bool currPointTop = false, currPointBottom = false;
+        bool drawRec = false;
+        int posCandle;
+        points.TryGetValue(idx, posCandle);
+        if(excludePoints.IndexOf(posCandle) >= 0)
+            continue;
+        if(time1 > time[rates_total - posCandle - 1] || time1 == NULL)
+        {
+            time1 = time[rates_total - posCandle - 1];
+            time1 -= PeriodSeconds(PERIOD_CURRENT)*5;
+        }
         datetime time2 = time[rates_total - 1];
+        double maxPrice = -1, minPrice = -1;
         time2 += PeriodSeconds(PERIOD_CURRENT)*5;
         
-        double maxTopPrice = -1;
-        double minBottomPrice = -1;
+        double price = m_zigzagTopBuffer[posCandle];
+        if(price == 0)
+            price = m_zigzagBottomBuffer[posCandle];
         
-        double bufferCheck = PointsToPriceShift(_Symbol, bufferPoints);
-        //Print("Found idxTop=" + idxTops[idx]);
+        if(maxPrice == -1 || maxPrice < price)
+            maxPrice = price;
+        if(minPrice == -1 || minPrice > price)
+            minPrice = price;
+            
+        if(m_zigzagTopBuffer[posCandle] > 0)
+            currPointTop = true;
+        if(m_zigzagBottomBuffer[posCandle] > 0)
+            currPointBottom = true;
+            
+        bool foundPointTop = false, foundPointBottom = false;
         for(int idxCheck = idx - 1; idxCheck >= 0; idxCheck--)
         {
-            if(MathAbs(m_zigzagTopBuffer[idxTops[idx]] - m_zigzagTopBuffer[idxTops[idxCheck]]) <= bufferCheck)
-            {
-                if(lstExcludeTop.IndexOf(idxTops[idx], 0) < 0)
-                {
-                    if(maxTopPrice < m_zigzagTopBuffer[idxTops[idxCheck]])
-                        maxTopPrice = m_zigzagTopBuffer[idxTops[idxCheck]];
-                    
-                    lstExcludeTop.Add(idxTops[idxCheck]);
-                    hasDrawRecTop = true;
-                }
-                
-                //break;
-            }
+            int posCandle1;
+            points.TryGetValue(idxCheck, posCandle1);
             
-            if(MathAbs(m_zigzagBottomBuffer[idxBottoms[idx]] - m_zigzagBottomBuffer[idxBottoms[idxCheck]]) <= bufferCheck)
+            double price1 = m_zigzagTopBuffer[posCandle1];
+            if(price1 == 0)
+                price1 = m_zigzagBottomBuffer[posCandle1];
+            
+            double delta = MathAbs(price - price1);
+            if(delta <= zone)
             {
-                
-                if(lstExcludeBottom.IndexOf(idxBottoms[idx]) < 0)
+                if(maxPrice == -1 || maxPrice < price1)
+                    maxPrice = price1;
+                if(minPrice == -1 || minPrice > price1)
+                    minPrice = price1;
+                if(excludePoints.IndexOf(posCandle1) < 0)
                 {
-                    if(minBottomPrice > m_zigzagBottomBuffer[idxBottoms[idxCheck]] || minBottomPrice < 0)
-                        minBottomPrice = m_zigzagBottomBuffer[idxBottoms[idxCheck]];
-                    
-                    lstExcludeBottom.Add(idxBottoms[idxCheck]);
-                    hasDrawRecBottom = true;
+                    if(m_zigzagTopBuffer[posCandle1] > 0)
+                        foundPointTop = true;
+                    if(m_zigzagBottomBuffer[posCandle1] > 0)
+                        foundPointBottom = true;
+                    excludePoints.Add(posCandle1);
+                    drawRec = true;
                 }
-                //break;
             }
         }
-        if(!hasDrawRecTop)
+        if(drawRec)
         {
-            if(lstExcludeTop.IndexOf(idxTops[idx]) < 0)
-            {
-                datetime time1 = time[rates_total - idxTops[idx] - 1];
-                datetime time2 = time[rates_total - 1];
-                time2 += PeriodSeconds(PERIOD_CURRENT)*5;
-                DrawLine(m_lineTop[idx], "line_" + idx, 
-                            time1, m_zigzagTopBuffer[idxTops[idx]],
-                            time2, m_zigzagTopBuffer[idxTops[idx]]);
-            }
+            color clr = clrDarkSeaGreen;
+            // Turning
+            if((currPointTop && foundPointBottom) || (currPointBottom && foundPointTop))
+                clr = InpTurningColor;
+            // Resistance
+            else if(currPointTop && foundPointTop)
+                clr = InpResColor;
+            // Support
+            else if(currPointBottom && foundPointBottom)
+                clr = InpSupColor;
+                
+            DrawRec(m_rec[idx], "rec_" + idx, 
+                    time1, maxPrice,
+                    time2, minPrice,
+                    clr);
         }
         else
         {
-            DrawRec(m_recTop[idx], "rec_" + idx, 
-                    time1Top, m_zigzagTopBuffer[idxTops[idx]],
-                    time2, maxTopPrice,
-                    clrDarkGoldenrod);
-        }
-        if(!hasDrawRecBottom)
-        {
-            if(lstExcludeBottom.IndexOf(idxBottoms[idx]) < 0)
+            if(excludePoints.IndexOf(posCandle) < 0)
             {
-                datetime time1 = time[rates_total - idxBottoms[idx] - 1];
-                datetime time2 = time[rates_total - 1];
-                time2 += PeriodSeconds(PERIOD_CURRENT)*5;
-                DrawLine(m_lineBottom[idx], "line_" + idx, 
-                            time1, m_zigzagBottomBuffer[idxBottoms[idx]],
-                            time2, m_zigzagBottomBuffer[idxBottoms[idx]]);
+                double price2;
+                if(m_zigzagTopBuffer[posCandle] > 0)
+                {
+                    price2 = open[rates_total - posCandle - 1];
+                    if(close[rates_total - posCandle - 1] > open[rates_total - posCandle - 1])
+                        price2 = close[rates_total - posCandle - 1];
+                    if(high[rates_total - posCandle - 2] > price2)
+                        price2 = high[rates_total - posCandle - 2];
+                    if(high[rates_total - posCandle] > price2)
+                        price2 = high[rates_total - posCandle];
+                }
+                if(m_zigzagBottomBuffer[posCandle] > 0)
+                {
+                    price2 = open[rates_total - posCandle - 1];
+                    if(close[rates_total - posCandle - 1] < open[rates_total - posCandle - 1])
+                        price2 = close[rates_total - posCandle - 1];
+                    if(low[rates_total - posCandle - 2] < price2)
+                        price2 = low[rates_total - posCandle - 2];
+                    if(low[rates_total - posCandle] < price2)
+                        price2 = low[rates_total - posCandle];
+                }
+                
+                // ------------------------------------------------
+                // Check overlap
+                bool isOverlap = false;
+                for(int idx = 0; idx < ArraySize(m_rec); idx++)
+                {
+                    if(ObjectFind(0, "rec_" + idx) >= 0)
+                    {
+                        
+                        double anchorPriceH = ObjectGetDouble(0, "rec_" + idx, OBJPROP_PRICE, 0);
+                        double anchorPriceL = ObjectGetDouble(0, "rec_" + idx, OBJPROP_PRICE, 1);
+                        if(anchorPriceH < anchorPriceL)
+                        {
+                            double temp = anchorPriceH;
+                            anchorPriceH = anchorPriceL;
+                            anchorPriceL = temp;
+                        }
+                        //Print("0=" + anchorPrice1 + "; 1=" + anchorPrice2);
+                        if(anchorPriceH >= price && anchorPriceL <= price)
+                            isOverlap = true;
+                        if(anchorPriceH >= price2 && anchorPriceL <= price2)
+                            isOverlap = true;
+                        if((anchorPriceH < price && anchorPriceL > price2) 
+                           ||(anchorPriceH < price2 && anchorPriceL > price))
+                           isOverlap = true;
+                    }
+                    if(isOverlap)
+                        break;
+                }
+                
+                // ------------------------------------------------
+                if(!isOverlap)
+                    DrawRec(m_rec[idx], "rec_" + idx, 
+                                    time1, price,
+                                    time2, price2, InpSingleColor);
             }
-        }
-        else
-        {
-            DrawRec(m_recBottom[idx], "rec_" + idx, 
-                    time1Bottom, m_zigzagBottomBuffer[idxBottoms[idx]],
-                    time2, minBottomPrice,
-                    clrDarkSeaGreen);
-                    
         }
     }
+//    CArrayList<int> lstExcludeTop;
+//    CArrayList<int> lstExcludeBottom;
+//    int bufferPoints = InpZone;
+//    for(int idx = InpLookbackPoint - 1; idx >= 0; idx--)
+//    {
+//        bool hasDrawRecTop = false, hasDrawRecBottom = false;
+//        datetime time1Top = time[rates_total - idxTops[idx] - 1];
+//        datetime time1Bottom = time[rates_total - idxBottoms[idx] - 1];
+//        datetime time2 = time[rates_total - 1];
+//        time2 += PeriodSeconds(PERIOD_CURRENT)*5;
+//        
+//        double maxTopPrice = -1;
+//        double minBottomPrice = -1;
+//        
+//        double bufferCheck = PointsToPriceShift(_Symbol, bufferPoints);
+//        //Print("Found idxTop=" + idxTops[idx]);
+//        for(int idxCheck = idx - 1; idxCheck >= 0; idxCheck--)
+//        {
+//            if(MathAbs(m_zigzagTopBuffer[idxTops[idx]] - m_zigzagTopBuffer[idxTops[idxCheck]]) <= bufferCheck)
+//            {
+//                if(lstExcludeTop.IndexOf(idxTops[idx], 0) < 0)
+//                {
+//                    if(maxTopPrice < m_zigzagTopBuffer[idxTops[idxCheck]])
+//                        maxTopPrice = m_zigzagTopBuffer[idxTops[idxCheck]];
+//                    
+//                    lstExcludeTop.Add(idxTops[idxCheck]);
+//                    hasDrawRecTop = true;
+//                }
+//                
+//                //break;
+//            }
+//            
+//            if(MathAbs(m_zigzagBottomBuffer[idxBottoms[idx]] - m_zigzagBottomBuffer[idxBottoms[idxCheck]]) <= bufferCheck)
+//            {
+//                
+//                if(lstExcludeBottom.IndexOf(idxBottoms[idx]) < 0)
+//                {
+//                    if(minBottomPrice > m_zigzagBottomBuffer[idxBottoms[idxCheck]] || minBottomPrice < 0)
+//                        minBottomPrice = m_zigzagBottomBuffer[idxBottoms[idxCheck]];
+//                    
+//                    lstExcludeBottom.Add(idxBottoms[idxCheck]);
+//                    hasDrawRecBottom = true;
+//                }
+//                //break;
+//            }
+//        }
+//        if(!hasDrawRecTop)
+//        {
+//            if(lstExcludeTop.IndexOf(idxTops[idx]) < 0)
+//            {
+//                datetime time1 = time[rates_total - idxTops[idx] - 1];
+//                datetime time2 = time[rates_total - 1];
+//                time2 += PeriodSeconds(PERIOD_CURRENT)*5;
+//                DrawLine(m_lineTop[idx], "line_" + idx, 
+//                            time1, m_zigzagTopBuffer[idxTops[idx]],
+//                            time2, m_zigzagTopBuffer[idxTops[idx]]);
+//            }
+//        }
+//        else
+//        {
+//            DrawRec(m_recTop[idx], "rec_" + idx, 
+//                    time1Top, m_zigzagTopBuffer[idxTops[idx]],
+//                    time2, maxTopPrice,
+//                    clrDarkGoldenrod);
+//        }
+//        if(!hasDrawRecBottom)
+//        {
+//            if(lstExcludeBottom.IndexOf(idxBottoms[idx]) < 0)
+//            {
+//                datetime time1 = time[rates_total - idxBottoms[idx] - 1];
+//                datetime time2 = time[rates_total - 1];
+//                time2 += PeriodSeconds(PERIOD_CURRENT)*5;
+//                DrawLine(m_lineBottom[idx], "line_" + idx, 
+//                            time1, m_zigzagBottomBuffer[idxBottoms[idx]],
+//                            time2, m_zigzagBottomBuffer[idxBottoms[idx]]);
+//            }
+//        }
+//        else
+//        {
+//            DrawRec(m_recBottom[idx], "rec_" + idx, 
+//                    time1Bottom, m_zigzagBottomBuffer[idxBottoms[idx]],
+//                    time2, minBottomPrice,
+//                    clrDarkSeaGreen);
+//                    
+//        }
+//    }
     return rates_total;
 }
