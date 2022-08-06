@@ -37,7 +37,8 @@ input int InpLookbackPoint = 10;            // Look back top/bottom points
 input color InpResColor = clrDarkGoldenrod; // Color of resistance zone
 input color InpSupColor = clrDarkSeaGreen;  // Color of support zone
 input color InpTurningColor = clrPurple;    // Color of turning res <-> sup
-input color InpSingleColor = clrDarkSlateGray;       // Color of single top/bottom point
+input color InpSingleColor = clrNONE;       // Color of single top/bottom point
+//input color InpSingleColor = clrDarkSlateGray;       // Color of single top/bottom point
 //--------------------------------------------------------------
 //const int MAX_POINT = 10;
 
@@ -100,10 +101,10 @@ int OnInit()
         m_line[idx] = NULL;
         m_rec[idx] = NULL;
         
-        if(ObjectFind(0, "line_" + idx) >= 0)
-            ObjectDelete(0, "line_" + idx);
-        if(ObjectFind(0, "rec_" + idx) >= 0)
-            ObjectDelete(0, "rec_" + idx);
+        if(ObjectFind(0, "line_" + (string)idx) >= 0)
+            ObjectDelete(0, "line_" + (string)idx);
+        if(ObjectFind(0, "rec_" + (string)idx) >= 0)
+            ObjectDelete(0, "rec_" + (string)idx);
     }
     return(INIT_SUCCEEDED);
 }
@@ -162,10 +163,6 @@ int OnCalculate(const int rates_total,
         Print("Getting zigzag bottom is failed! Error ", GetLastError());
         return(0);
     }
-    
-    int idxTops[], idxBottoms[];
-    ArrayResize(idxTops, InpLookbackPoint);
-    ArrayResize(idxBottoms, InpLookbackPoint);
     
     CArrayList<int> points;
     int idxFindTop = 4;
@@ -255,7 +252,7 @@ int OnCalculate(const int rates_total,
             else if(currPointBottom && foundPointBottom)
                 clr = InpSupColor;
                 
-            DrawRec(m_rec[idx], "rec_" + idx, 
+            DrawRec(m_rec[idx], "rec_" + (string)idx, 
                     time1, maxPrice,
                     time2, minPrice,
                     clr);
@@ -264,7 +261,7 @@ int OnCalculate(const int rates_total,
         {
             if(excludePoints.IndexOf(posCandle) < 0)
             {
-                double price2;
+                double price2 = 0;
                 if(m_zigzagTopBuffer[posCandle] > 0)
                 {
                     price2 = open[rates_total - posCandle - 1];
@@ -289,13 +286,13 @@ int OnCalculate(const int rates_total,
                 // ------------------------------------------------
                 // Check overlap
                 bool isOverlap = false;
-                for(int idx = 0; idx < ArraySize(m_rec); idx++)
+                for(int idxOverlap = 0; idxOverlap < ArraySize(m_rec); idxOverlap++)
                 {
-                    if(ObjectFind(0, "rec_" + idx) >= 0)
+                    if(ObjectFind(0, "rec_" + (string)idxOverlap) >= 0)
                     {
                         
-                        double anchorPriceH = ObjectGetDouble(0, "rec_" + idx, OBJPROP_PRICE, 0);
-                        double anchorPriceL = ObjectGetDouble(0, "rec_" + idx, OBJPROP_PRICE, 1);
+                        double anchorPriceH = ObjectGetDouble(0, "rec_" + (string)idxOverlap, OBJPROP_PRICE, 0);
+                        double anchorPriceL = ObjectGetDouble(0, "rec_" + (string)idxOverlap, OBJPROP_PRICE, 1);
                         if(anchorPriceH < anchorPriceL)
                         {
                             double temp = anchorPriceH;
@@ -317,97 +314,30 @@ int OnCalculate(const int rates_total,
                 
                 // ------------------------------------------------
                 if(!isOverlap)
-                    DrawRec(m_rec[idx], "rec_" + idx, 
+                    DrawRec(m_rec[idx], "rec_" + (string)idx, 
                                     time1, price,
                                     time2, price2, InpSingleColor);
+                //else
+                //{
+                //    // Xóa rec không sử dụng
+                //    if(ObjectFind(0, "rec_" + (string)idx) >= 0)
+                //    {
+                //        ObjectDelete(0, "rec_" + (string)idx);
+                //        m_rec[idx] = NULL;
+                //    }
+                //}
+            }
+            else
+            {
+                // Xóa rec không sử dụng
+                if(ObjectFind(0, "rec_" + (string)idx) >= 0)
+                {
+                    ObjectDelete(0, "rec_" + (string)idx);
+                    m_rec[idx] = NULL;
+                }
             }
         }
     }
-//    CArrayList<int> lstExcludeTop;
-//    CArrayList<int> lstExcludeBottom;
-//    int bufferPoints = InpZone;
-//    for(int idx = InpLookbackPoint - 1; idx >= 0; idx--)
-//    {
-//        bool hasDrawRecTop = false, hasDrawRecBottom = false;
-//        datetime time1Top = time[rates_total - idxTops[idx] - 1];
-//        datetime time1Bottom = time[rates_total - idxBottoms[idx] - 1];
-//        datetime time2 = time[rates_total - 1];
-//        time2 += PeriodSeconds(PERIOD_CURRENT)*5;
-//        
-//        double maxTopPrice = -1;
-//        double minBottomPrice = -1;
-//        
-//        double bufferCheck = PointsToPriceShift(_Symbol, bufferPoints);
-//        //Print("Found idxTop=" + idxTops[idx]);
-//        for(int idxCheck = idx - 1; idxCheck >= 0; idxCheck--)
-//        {
-//            if(MathAbs(m_zigzagTopBuffer[idxTops[idx]] - m_zigzagTopBuffer[idxTops[idxCheck]]) <= bufferCheck)
-//            {
-//                if(lstExcludeTop.IndexOf(idxTops[idx], 0) < 0)
-//                {
-//                    if(maxTopPrice < m_zigzagTopBuffer[idxTops[idxCheck]])
-//                        maxTopPrice = m_zigzagTopBuffer[idxTops[idxCheck]];
-//                    
-//                    lstExcludeTop.Add(idxTops[idxCheck]);
-//                    hasDrawRecTop = true;
-//                }
-//                
-//                //break;
-//            }
-//            
-//            if(MathAbs(m_zigzagBottomBuffer[idxBottoms[idx]] - m_zigzagBottomBuffer[idxBottoms[idxCheck]]) <= bufferCheck)
-//            {
-//                
-//                if(lstExcludeBottom.IndexOf(idxBottoms[idx]) < 0)
-//                {
-//                    if(minBottomPrice > m_zigzagBottomBuffer[idxBottoms[idxCheck]] || minBottomPrice < 0)
-//                        minBottomPrice = m_zigzagBottomBuffer[idxBottoms[idxCheck]];
-//                    
-//                    lstExcludeBottom.Add(idxBottoms[idxCheck]);
-//                    hasDrawRecBottom = true;
-//                }
-//                //break;
-//            }
-//        }
-//        if(!hasDrawRecTop)
-//        {
-//            if(lstExcludeTop.IndexOf(idxTops[idx]) < 0)
-//            {
-//                datetime time1 = time[rates_total - idxTops[idx] - 1];
-//                datetime time2 = time[rates_total - 1];
-//                time2 += PeriodSeconds(PERIOD_CURRENT)*5;
-//                DrawLine(m_lineTop[idx], "line_" + idx, 
-//                            time1, m_zigzagTopBuffer[idxTops[idx]],
-//                            time2, m_zigzagTopBuffer[idxTops[idx]]);
-//            }
-//        }
-//        else
-//        {
-//            DrawRec(m_recTop[idx], "rec_" + idx, 
-//                    time1Top, m_zigzagTopBuffer[idxTops[idx]],
-//                    time2, maxTopPrice,
-//                    clrDarkGoldenrod);
-//        }
-//        if(!hasDrawRecBottom)
-//        {
-//            if(lstExcludeBottom.IndexOf(idxBottoms[idx]) < 0)
-//            {
-//                datetime time1 = time[rates_total - idxBottoms[idx] - 1];
-//                datetime time2 = time[rates_total - 1];
-//                time2 += PeriodSeconds(PERIOD_CURRENT)*5;
-//                DrawLine(m_lineBottom[idx], "line_" + idx, 
-//                            time1, m_zigzagBottomBuffer[idxBottoms[idx]],
-//                            time2, m_zigzagBottomBuffer[idxBottoms[idx]]);
-//            }
-//        }
-//        else
-//        {
-//            DrawRec(m_recBottom[idx], "rec_" + idx, 
-//                    time1Bottom, m_zigzagBottomBuffer[idxBottoms[idx]],
-//                    time2, minBottomPrice,
-//                    clrDarkSeaGreen);
-//                    
-//        }
-//    }
+    
     return rates_total;
 }
