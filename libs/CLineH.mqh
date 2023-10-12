@@ -14,7 +14,7 @@ class CLineH: public CObject
         int CONST_MARGIN;
     protected:
         
-        void DrawLineH(double price, CChartObjectHLine *line, string id, color clr)
+        void DrawLineH(double price, CChartObjectHLine *&line, string id, color clr)
         {
             if(ObjectFind(0, id) >= 0)
                 return;
@@ -31,7 +31,7 @@ class CLineH: public CObject
             line.Timeframes(OBJ_ALL_PERIODS);
             ChartRedraw();
         }
-        void DrawText(datetime time, double price, CChartObjectText *text, string id, string title, color clr = clrYellow)
+        void DrawText(datetime time, double price, CChartObjectText *&text, string id, string title, color clr = clrYellow)
         {
             if(ObjectFind(0, id) >= 0)
                 return;
@@ -92,6 +92,19 @@ class CLineH: public CObject
                 //x = ObjectGetInteger(0, m_lineId, OBJPROP_XSIZE);
                 //ChartXYToTimePrice(0, x, y, subWin, m_time, m_price);
             }
+        }
+        void Remove()
+        {
+            if(m_lineObject != NULL)
+                m_lineObject.Delete();
+            if(ObjectFind(0, m_lineId) >= 0)
+                ObjectDelete(0, m_lineId);
+                
+            if(m_lineTextObject != NULL)
+                m_lineTextObject.Delete();
+            if(ObjectFind(0, m_lineTitleId) >= 0)
+                ObjectDelete(0, m_lineTitleId);
+                
         }
         double Price()
         {
