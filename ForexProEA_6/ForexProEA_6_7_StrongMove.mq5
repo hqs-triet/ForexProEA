@@ -171,7 +171,13 @@ int OnCalculate(const int rates_total,
     
     int start;
     if(prev_calculated == 0)
+    {
         start = 0;
+        // Bỏ qua vị trí nến hiện tại (mới nhất)
+        m_signalBuyBuffer[rates_total - 1] = 0;
+        m_signalSellBuffer[rates_total - 1] = 0;
+        m_signalCutBuffer[rates_total - 1] = 0;
+    }
     else
         start = prev_calculated - 1;
     
